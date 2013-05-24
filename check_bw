@@ -28,7 +28,7 @@ vnstat="/usr/bin/vnstat"
 while getopts ":tpw:c:i:" OPTION
 do
      case $OPTION in
-  t)
+	t)
 	  mode=0
 	  ;;
 	p)
