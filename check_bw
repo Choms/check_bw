@@ -1,0 +1,87 @@
+#!/bin/bash
+
+if [ "$#" -eq 0 ];then
+echo "
+##########
+#
+# Bandwidth checker by Choms <choms@botmania.net> @EDIS <sergio@edis.at>
+#
+# Usage:
+# ./check_bw (-t|-p) -i (interface) -w (in,out) -c (in,out)
+# -t: transfer mode, measure in Mbit/s
+# -p: packets mode, measure in packages/s
+# -i: interface name
+# -w: warning level written as in,out - only integers
+# -c: critical level written as in,out - only integers
+#
+# Sample:
+# ./check_bw -t -i eth0 -w 8,4 -c 10,5
+# output: BANDWIDTH OK - rx 1.20 Mbit/s tx 1.86 Mbit/s
+#
+##########
+"; exit 0
+fi
+
+awk="/usr/bin/awk"
+vnstat="/usr/bin/vnstat"
+
+while getopts ":tpw:c:i:" OPTION
+do
+     case $OPTION in
+  t)
+	  mode=0
+	  ;;
+	p)
+	  mode=1
+	  ;;
+	w)
+	  warn=$OPTARG
+	  ;;
+	c)
+	  crit=$OPTARG
+	  ;;
+	i)
+	  iface=$OPTARG
+	  ;;
+      esac
+done
+
+warni=$(echo $warn | cut -f1 -d,)
+warno=$(echo $warn | cut -f2 -d,)
+criti=$(echo $crit | cut -f1 -d,)
+crito=$(echo $crit | cut -f1 -d,)
+
+i=$($vnstat -tr -i $iface)
+
+if (( $mode == 0 ))
+then
+  rx=$(echo $i | grep -o "rx [[:digit:]]*\.[[:digit:]]* Mbit/s")
+  tx=$(echo $i | grep -o "tx [[:digit:]]*\.[[:digit:]]* Mbit/s")
+else
+  rx=$(echo $i | grep -o "rx [[:digit:]]*\.[[:digit:]]* Mbit/s [[:digit:]]* packets/s")
+  rx=$(echo $rx | grep -o "[[:digit:]]* packets/s")
+  rx="rx "$rx
+  tx=$(echo $i | grep -o "tx [[:digit:]]*\.[[:digit:]]* Mbit/s [[:digit:]]* packets/s")
+  tx=$(echo $tx | grep -o "[[:digit:]]* packets/s")
+  tx="tx "$tx
+fi
+
+status="$rx $tx"
+
+rx1=$(echo $rx | $awk '{ print $2 }' | $awk -F\. '{ print $1 }')
+tx1=$(echo $tx | $awk '{ print $2 }' | $awk -F\. '{ print $1 }')
+
+if (( $warni <= $rx1 )) || (( $warno <= $tx1 ))
+then
+  if (( $criti <= $rx1 )) || (( $crito <= $tx1 ))
+  then
+    echo "BANDWIDTH CHECK CRITICAL - $status"
+    exit 2
+  else
+    echo "BANDWIDTH CHECK WARNING - $status"
+    exit 1
+  fi
+else
+  echo "BANDWIDTH OK - $status"
+  exit 0
+fi
