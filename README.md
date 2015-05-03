@@ -5,6 +5,8 @@ Bandwidth check for use with nagios or similar
 
 Measures both transfer in Mbit/s and packets/s
 
+Requires **vnstat** installed to work.
+
 Usage:
 
     ./check_bw (-t|-p) -i (interface) -w (in,out) -c (in,out)
